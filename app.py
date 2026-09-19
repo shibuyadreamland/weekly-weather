@@ -6,14 +6,11 @@ from datetime import datetime, timezone, timedelta
 import calendar
 from calendar import Calendar
 import jpholiday
+import time
 
 # ページ設定（幅広モード）
 st.set_page_config(page_title="週間天気ダッシュボード", layout="wide")
-# 1秒（1000ミリ秒）ごとに自動で画面を更新して時計を動かす
-st_autorefresh(interval=1000, limit=None, key="realtime_clock")
 
-# --- サイドバーに日時（秒付き）と常時表示カレンダーを追加（日本時間） ---
-st.sidebar.header("カレンダー・時計")
 # --- サイドバーに日時（秒付き）と常時表示カレンダーを追加（日本時間） ---
 st.sidebar.header("カレンダー・時計")
 JST = timezone(timedelta(hours=+9), 'JST')
@@ -76,94 +73,14 @@ html_table += '</table>'
 
 st.sidebar.markdown(html_table, unsafe_allow_html=True)
 
+# メイン画面の処理（天気予報など）
+st.title("週間天気ダッシュボード")
+
+# 検索フォームなどのコードが続く場合はここに記述
+# （※もし元のコードがある場合はそのまま下部に残してください）
+
 # 最後に、時計の表示を1秒ごとに更新し続ける処理
 while True:
     now = datetime.now(JST)
     clock_placeholder.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M:%S')}")
     time.sleep(1)
-
-def get_weather_info(code):
-    if code == 0: return "☀️ 晴れ"
-    elif code in [1, 2, 3]: return "⛅ 曇り"
-    elif code in [45, 48]: return "🌫️ 霧"
-    elif code in [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82]: return "☔ 雨"
-    elif code in [71, 73, 75, 77, 85, 86]: return "⛄ 雪"
-    elif code in [95, 96, 99]: return "⛈️ 雷雨"
-    else: return "❓ 不明"
-
-HEADERS = {'User-Agent': 'MyWeeklyWeatherWeb/1.0'}
-
-def get_coordinates(city_name):
-    safe_name = urllib.parse.quote(city_name)
-    url = f"https://nominatim.openstreetmap.org/search?q={safe_name}&format=json&limit=1"
-    try:
-        req = urllib.request.Request(url, headers=HEADERS)
-        with urllib.request.urlopen(req) as res:
-            data = json.loads(res.read().decode())
-            if len(data) > 0:
-                result = data[0]
-                return float(result["lat"]), float(result["lon"]), None
-            return None, None, "地名が見つかりません"
-    except Exception as e:
-        return None, None, f"エラー: {e}"
-
-def fetch_weather(lat, lon):
-    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo"
-    try:
-        req = urllib.request.Request(url, headers=HEADERS)
-        with urllib.request.urlopen(req) as res:
-            return json.loads(res.read().decode()), None
-    except Exception as e:
-        return None, f"エラー: {e}"
-
-st.title("週間天気ダッシュボード")
-
-# 検索フォーム
-col1, col2 = st.columns([3, 1])
-with col1:
-    city_name = st.text_input("地名を入力", value="東京", label_visibility="collapsed")
-with col2:
-    search_clicked = st.button("検索", use_container_width=True)
-
-if city_name:
-    lat, lon, geo_err = get_coordinates(city_name)
-    if lat is None:
-        st.error(f"【エラー】{geo_err}")
-    else:
-        data, weather_err = fetch_weather(lat, lon)
-        if not data:
-            st.error(f"【エラー】{weather_err}")
-        else:
-            st.subheader(f"「{city_name}」の7日間天気予報")
-            
-            # 7日分を横並びにするカラムを作成
-            cols = st.columns(7)
-            daily = data["daily"]
-            weekdays_jp = ["月", "火", "水", "木", "金", "土", "日"]
-            
-            for i in range(7):
-                date_str = daily["time"][i]
-                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                weekday_idx = date_obj.weekday()
-                
-                # 曜日の色分け用HTML（StreamlitではMarkdown+HTMLで色付け可能）
-                if jpholiday.is_holiday(date_obj.date()) or weekday_idx == 6:
-                    color = "red"
-                elif weekday_idx == 5:
-                    color = "blue"
-                else:
-                    color = "black"
-                    
-                display_date = f"<span style='color:{color}; font-weight:bold;'>{date_obj.strftime('%m/%d')}({weekdays_jp[weekday_idx]})</span>"
-                
-                w_code = daily["weathercode"][i]
-                max_temp = daily["temperature_2m_max"][i]
-                min_temp = daily["temperature_2m_min"][i]
-                emoji_text = get_weather_info(w_code)
-                
-                # 各カラムに情報を書き込む
-                with cols[i]:
-                    st.markdown(display_date, unsafe_allow_html=True)
-                    st.markdown(f"### {emoji_text}")
-                    st.metric(label="最高", value=f"{max_temp}℃")
-                    st.metric(label="最低", value=f"{min_temp}℃")
