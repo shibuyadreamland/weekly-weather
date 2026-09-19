@@ -86,6 +86,8 @@ def get_weather_info(code):
 
 HEADERS = {'User-Agent': 'MyWeeklyWeatherWeb/1.0'}
 
+# キャッシュを使ってサーバーへの過剰なリクエストを防止
+@st.cache_data(ttl=3600)
 def get_coordinates(city_name):
     safename = urllib.parse.quote(city_name)
     url = f"https://nominatim.openstreetmap.org/search?q={safename}&format=json&limit=1"
@@ -100,6 +102,7 @@ def get_coordinates(city_name):
     except Exception as e:
         return None, None, f"エラー: {e}"
 
+@st.cache_data(ttl=3600)
 def fetch_weather(lat, lon):
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo"
     try:
@@ -122,7 +125,7 @@ with col_m2:
         st.session_state.target_city = input_city
         st.rerun()
 
-# 天気データの取得と表示（検索ボタンが押されたとき、または保持されている都市名を使用）
+# 天気データの取得と表示
 if st.session_state.target_city:
     lat, lon, geo_err = get_coordinates(st.session_state.target_city)
     if lat is None:
