@@ -43,7 +43,7 @@ for week in cal_matrix:
 html_table += '</table>'
 
 st.sidebar.markdown(html_table, unsafe_allow_html=True)
-st.sidebar.markdown(styled_html, unsafe_allow_html=True)
+
 def get_weather_info(code):
     if code == 0: return "☀️ 晴れ"
     elif code in [1, 2, 3]: return "⛅ 曇り"
