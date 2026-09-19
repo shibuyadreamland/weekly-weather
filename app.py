@@ -9,7 +9,7 @@ import jpholiday
 import time
 
 # ページ設定（幅広モード）
-st.set_page_config(page_title="週間天気ダッシュボード", layout="wide")
+st.set_page_config(page_title="天気ダッシュボード", layout="wide")
 
 # --- サイドバーに日時（秒付き動的時計）と切り替え可能なカレンダーを追加（日本時間） ---
 st.sidebar.header("カレンダー・時計")
@@ -74,43 +74,53 @@ html_table += '</table>'
 st.sidebar.markdown(html_table, unsafe_allow_html=True)
 
 
-# --- メイン画面の処理（天気予報） ---
-st.title("週間天気ダッシュボード")
+# --- メイン画面の処理（天気予報：世界中対応 ＆ 時間ごとの変化表示） ---
+st.title("天気ダッシュボード")
 
 def get_weather_info(code):
-    if code == 0: return "☀️ 晴れ"
-    elif code in [1, 2, 3]: return "🌤️ 曇り"
-    elif code in [45, 48]: return "🌫️ 霧"
-    elif code in [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82]: return "☔ 雨"
-    elif code in [71, 73, 75, 77, 85, 86]: return "🌨️ 雪"
-    elif code in [95, 96, 99]: return "⛈️ 雷雨"
+    if code == 0: return "☀️ 快晴"
+    elif code == 1: return "🌤️ 概ね晴れ"
+    elif code == 2: return "⛅ 晴時々曇"
+    elif code == 3: return "☁️ 曇り"
+    elif code in [45, 48]: return "🌫️ 霧・濃霧"
+    elif code in [51, 53, 55]: return "🌧️ 霧雨"
+    elif code in [56, 57]: return "🧊 凍結性霧雨"
+    elif code == 61: return "☔ 弱雨"
+    elif code == 63: return "☔ 雨"
+    elif code == 65: return "🌧️ 強い雨"
+    elif code in [66, 67]: return "❄️ 凍結性降雨"
+    elif code == 71: return "🌨️ 弱雪"
+    elif code == 73: return "❄️ 雪"
+    elif code == 75: return "❄️ 強い雪"
+    elif code == 77: return "❄️ 霧雪"
+    elif code in [80, 81]: return "🌦️ にわか雨"
+    elif code == 82: return "🌧️ 激しいにわか雨"
+    elif code in [85, 86]: return "🌨️ にわか雪"
+    elif code == 95: return "⚡ 雷雨"
+    elif code in [96, 99]: return "⛈️ 激しい雷雨"
     else: return "❓ 不明"
 
 HEADERS = {'User-Agent': 'MyWeeklyWeatherWeb/1.0'}
 
-CITY_COORDS = {
-    "東京": (35.6895, 139.6917),
-    "横浜": (35.4437, 139.6380),
-    "大阪": (34.6937, 135.5022),
-    "名古屋": (35.1815, 136.9066),
-    "札幌": (43.0618, 141.3543),
-    "福岡": (33.5902, 130.4017),
-    "京都": (35.0116, 135.7681),
-    "神戸": (34.6901, 135.1956),
-    "広島": (34.3853, 132.4553),
-    "仙台": (38.2682, 140.8694)
-}
-
+@st.cache_data(ttl=3600)
 def get_coordinates(city_name):
-    clean_name = city_name.strip()
-    if clean_name in CITY_COORDS:
-        return CITY_COORDS[clean_name][0], CITY_COORDS[clean_name][1], None
-    else:
-        return None, None, "登録されていない地名です（東京、横浜、大阪、名古屋、札幌、福岡、京都、神戸、広島、仙台からお選びください）"
+    safename = urllib.parse.quote(city_name)
+    url = f"https://nominatim.openstreetmap.org/search?q={safename}&format=json&limit=1"
+    try:
+        req = urllib.request.Request(url, headers=HEADERS)
+        with urllib.request.urlopen(req) as res:
+            data = json.loads(res.read().decode())
+            if len(data) > 0:
+                result = data[0]
+                return float(result["lat"]), float(result["lon"]), None
+        return None, None, "地名が見つかりませんでした。別の表記でお試しください。"
+    except Exception as e:
+        return None, None, f"エラー: {e}"
 
 @st.cache_data(ttl=3600)
 def fetch_weather(lat, lon):
-    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo"
+    # 週間天気(daily)に加え、時間ごと(hourly)の天気コード、気温、降水確率を取得
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&hourly=temperature_2m,weathercode,precipitation_probability&timezone=Asia%2FTokyo"
     try:
         req = urllib.request.Request(url, headers=HEADERS)
         with urllib.request.urlopen(req) as res:
@@ -123,7 +133,7 @@ if 'target_city' not in st.session_state:
 
 col_m1, col_m2 = st.columns([3, 1])
 with col_m1:
-    input_city = st.text_input("地名を入力", value=st.session_state.target_city, label_visibility="collapsed")
+    input_city = st.text_input("世界中の地名を入力", value=st.session_state.target_city, label_visibility="collapsed")
 with col_m2:
     if st.button("検索", use_container_width=True):
         st.session_state.target_city = input_city
@@ -136,24 +146,52 @@ if st.session_state.target_city:
     else:
         data, weather_err = fetch_weather(lat, lon)
         if data is not None:
-            st.subheader(f"「{st.session_state.target_city}」の週間天気予報")
-            daily = data.get("daily", {})
-            times = daily.get("time", [])
-            codes = daily.get("weathercode", [])
-            tmax = daily.get("temperature_2m_max", [])
-            tmin = daily.get("temperature_2m_min", [])
+            st.subheader(f"「{st.session_state.target_city}」の天気予報")
             
-            cols = st.columns(len(times))
-            for i, t in enumerate(times):
-                with cols[i]:
-                    # 日付文字列から曜日を判定して追加
-                    date_obj = datetime.strptime(t, "%Y-%m-%d")
-                    wd = ["(日)", "(月)", "(火)", "(水)", "(木)", "(金)", "(土)"][date_obj.isoweekday() % 7]
+            # タブを使って「週間予報」と「時間ごとの予報」を切り替えられるようにする
+            tab1, tab2 = st.tabs(["📅 週間天気予報", "⏱️ 時間ごとの天気変化（24時間）"])
+            
+            with tab1:
+                daily = data.get("daily", {})
+                times = daily.get("time", [])
+                codes = daily.get("weathercode", [])
+                tmax = daily.get("temperature_2m_max", [])
+                tmin = daily.get("temperature_2m_min", [])
+                
+                cols = st.columns(len(times))
+                for i, t in enumerate(times):
+                    with cols[i]:
+                        date_obj = datetime.strptime(t, "%Y-%m-%d")
+                        wd = ["(日)", "(月)", "(火)", "(水)", "(木)", "(金)", "(土)"][date_obj.isoweekday() % 7]
+                        st.markdown(f"**{t} {wd}**")
+                        st.write(get_weather_info(codes[i]))
+                        st.markdown(f"最高: {tmax[i]}°C")
+                        st.markdown(f"最低: {tmin[i]}°C")
+            
+            with tab2:
+                st.write("直近24時間の天気・気温・降水確率の推移です。")
+                hourly = data.get("hourly", {})
+                h_times = hourly.get("time", [])[:24]
+                h_codes = hourly.get("weathercode", [])[:24]
+                h_temps = hourly.get("temperature_2m", [])[:24]
+                h_pops = hourly.get("precipitation_probability", [])[:24]
+                
+                # 見やすいようにスクロール可能な横並び、または表形式で表示
+                h_cols = st.columns(min(len(h_times), 8))
+                for i, ht in enumerate(h_times):
+                    # 最初の8時間分をピックアップしてカード形式で表示
+                    col_idx = i % len(h_cols)
+                    if i > 0 and col_idx == 0:
+                        # 9時間目以降の改行表現など
+                        pass
                     
-                    st.markdown(f"**{t} {wd}**")
-                    st.write(get_weather_info(codes[i]))
-                    st.markdown(f"最高: {tmax[i]}°C")
-                    st.markdown(f"最低: {tmin[i]}°C")
+                    dt_str = datetime.fromisoformat(ht).strftime('%m/%d %H時')
+                    with h_cols[col_idx]:
+                        st.markdown(f"**{dt_str}**")
+                        st.write(get_weather_info(h_codes[i]))
+                        st.markdown(f"気温: {h_temps[i]}°C")
+                        st.markdown(f"降水: {h_pops[i]}%")
+                        st.markdown("---")
         else:
             st.error(f"【エラー】 {weather_err}")
 
