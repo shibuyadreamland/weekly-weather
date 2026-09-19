@@ -74,7 +74,7 @@ html_table += '</table>'
 st.sidebar.markdown(html_table, unsafe_allow_html=True)
 
 
-# --- メイン画面の処理（天気予報：API制限を回避する内蔵座標方式） ---
+# --- メイン画面の処理（天気予報） ---
 st.title("週間天気ダッシュボード")
 
 def get_weather_info(code):
@@ -146,7 +146,11 @@ if st.session_state.target_city:
             cols = st.columns(len(times))
             for i, t in enumerate(times):
                 with cols[i]:
-                    st.markdown(f"**{t}**")
+                    # 日付文字列から曜日を判定して追加
+                    date_obj = datetime.strptime(t, "%Y-%m-%d")
+                    wd = ["(日)", "(月)", "(火)", "(水)", "(木)", "(金)", "(土)"][date_obj.isoweekday() % 7]
+                    
+                    st.markdown(f"**{t} {wd}**")
                     st.write(get_weather_info(codes[i]))
                     st.markdown(f"最高: {tmax[i]}°C")
                     st.markdown(f"最低: {tmin[i]}°C")
