@@ -2,14 +2,15 @@ import streamlit as st
 import urllib.request
 import urllib.parse
 import json
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import jpholiday
 
 # ページ設定（幅広モード）
 st.set_page_config(page_title="週間天気ダッシュボード", layout="wide")
-# --- サイドバーにカレンダーと日時を追加 ---
+# --- サイドバーにカレンダーと日時を追加（日本時間） ---
 st.sidebar.header("カレンダー・時計")
-now = datetime.now()
+JST = timezone(timedelta(hours=+9), 'JST')
+now = datetime.now(JST)
 st.sidebar.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M')}")
 st.sidebar.date_input("カレンダー", now.date())
 def get_weather_info(code):
