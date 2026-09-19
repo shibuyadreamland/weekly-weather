@@ -14,15 +14,20 @@ st_autorefresh(interval=1000, limit=None, key="realtime_clock")
 
 # --- サイドバーに日時（秒付き）と常時表示カレンダーを追加（日本時間） ---
 st.sidebar.header("カレンダー・時計")
+# --- サイドバーに日時（秒付き）と常時表示カレンダーを追加（日本時間） ---
+st.sidebar.header("カレンダー・時計")
 JST = timezone(timedelta(hours=+9), 'JST')
-now = datetime.now(JST)
-st.sidebar.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M:%S')}")
+
+# 時計をリアルタイム表示するための空きスペース（プレースホルダー）を作る
+clock_placeholder = st.sidebar.empty()
 
 # セッションステート（状態管理）を使って表示する年・月を記憶する
 if 'cal_year' not in st.session_state:
-    st.session_state.cal_year = now.year
+    now_init = datetime.now(JST)
+    st.session_state.cal_year = now_init.year
 if 'cal_month' not in st.session_state:
-    st.session_state.cal_month = now.month
+    now_init = datetime.now(JST)
+    st.session_state.cal_month = now_init.month
 
 st.sidebar.subheader("カレンダー")
 
@@ -55,7 +60,6 @@ for week in month_weeks:
     html_table += '<tr>'
     for i, d in enumerate(week):
         style = "padding: 4px;"
-        # 表示中の月に含まれる日付かどうかを判定
         is_current_month = (d.month == st.session_state.cal_month)
         
         if is_current_month:
@@ -71,6 +75,12 @@ for week in month_weeks:
 html_table += '</table>'
 
 st.sidebar.markdown(html_table, unsafe_allow_html=True)
+
+# 最後に、時計の表示を1秒ごとに更新し続ける処理
+while True:
+    now = datetime.now(JST)
+    clock_placeholder.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M:%S')}")
+    time.sleep(1)
 
 def get_weather_info(code):
     if code == 0: return "☀️ 晴れ"
