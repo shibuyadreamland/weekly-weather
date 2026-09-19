@@ -8,37 +8,39 @@ import jpholiday
 from streamlit_autorefresh import st_autorefresh
 # ページ設定（幅広モード）
 st.set_page_config(page_title="週間天気ダッシュボード", layout="wide")
-# --- サイドバーに日時と常時表示カレンダーを追加（日本時間） ---
+# 1秒（1000ミリ秒）ごとに自動で画面を更新して時計を動かす
+st_autorefresh(interval=1000, limit=None, key="realtime_clock")
+
+# --- サイドバーに日時（秒付き）と常時表示カレンダーを追加（日本時間） ---
 st.sidebar.header("カレンダー・時計")
 JST = timezone(timedelta(hours=+9), 'JST')
 now = datetime.now(JST)
-st.sidebar.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M')}")
+st.sidebar.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M:%S')}")
 
 st.sidebar.subheader("今月のカレンダー")
 
-# カレンダーのデータを取得して自作のHTMLテーブルを作成
-cal_matrix = calendar.monthcalendar(now.year, now.month)
+# カレンダーの生成部分（前後月の日付を含む）
+cal = Calendar(firstweekday=calendar.SUNDAY)
+month_weeks = cal.monthdatescalendar(now.year, now.month)
+
 html_table = '<table class="month" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px;">'
 html_table += '<tr><th style="color: #ff4b4b; padding: 4px;">Sun</th><th style="padding: 4px;">Mon</th><th style="padding: 4px;">Tue</th><th style="padding: 4px;">Wed</th><th style="padding: 4px;">Thu</th><th style="padding: 4px;">Fri</th><th style="color: #2980b9; padding: 4px;">Sat</th></tr>'
 
-for week in cal_matrix:
+for week in month_weeks:
     html_table += '<tr>'
-    for i, day in enumerate(week):
-        if day == 0:
-            html_table += '<td style="padding: 4px;"></td>'
-        else:
-            # どの日付か判定するためのお皿を用意
-            current_date = datetime(now.year, now.month, day).date()
-            style = "padding: 4px;"
-            
-            # 日曜日(i==0) または 祝日の場合 -> 赤色
-            if i == 0 or jpholiday.is_holiday(current_date):
+    for i, d in enumerate(week):
+        style = "padding: 4px;"
+        is_current_month = (d.month == now.month)
+        
+        if is_current_month:
+            if i == 0 or jpholiday.is_holiday(d):
                 style += " color: #ff4b4b; font-weight: bold;"
-            # 土曜日(i==6)の場合 -> 青色
             elif i == 6:
                 style += " color: #2980b9; font-weight: bold;"
-                
-            html_table += f'<td style="{style}">{day}</td>'
+        else:
+            style += " color: #d3d3d3;"
+            
+        html_table += f'<td style="{style}">{d.day}</td>'
     html_table += '</tr>'
 html_table += '</table>'
 
