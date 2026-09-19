@@ -15,7 +15,7 @@ st.sidebar.header("カレンダー・時計")
 JST = timezone(timedelta(hours=+9), 'JST')
 now = datetime.now(JST)
 
-# 時刻を表示（分単位にすることでエラーやループの競合を完全に防ぎます）
+# 時刻を表示
 st.sidebar.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M')}")
 
 # セッションステート（状態管理）を使って表示する年・月を記憶する
@@ -109,21 +109,28 @@ def fetch_weather(lat, lon):
     except Exception as e:
         return None, f"エラー: {e}"
 
+# 検索状態を保持するセッションの初期化
+if 'target_city' not in st.session_state:
+    st.session_state.target_city = "東京"
+
 # 検索フォーム
 col_m1, col_m2 = st.columns([3, 1])
 with col_m1:
-    city_name = st.text_input("地名を入力", value="東京", label_visibility="collapsed")
+    input_city = st.text_input("地名を入力", value=st.session_state.target_city, label_visibility="collapsed")
 with col_m2:
-    search_clicked = st.button("検索", use_container_width=True)
+    if st.button("検索", use_container_width=True):
+        st.session_state.target_city = input_city
+        st.rerun()
 
-if city_name:
-    lat, lon, geo_err = get_coordinates(city_name)
+# 天気データの取得と表示（検索ボタンが押されたとき、または保持されている都市名を使用）
+if st.session_state.target_city:
+    lat, lon, geo_err = get_coordinates(st.session_state.target_city)
     if lat is None:
         st.error(f"【エラー】 {geo_err}")
     else:
         data, weather_err = fetch_weather(lat, lon)
         if data is not None:
-            st.subheader(f"「{city_name}」の週間天気予報")
+            st.subheader(f"「{st.session_state.target_city}」の週間天気予報")
             daily = data.get("daily", {})
             times = daily.get("time", [])
             codes = daily.get("weathercode", [])
