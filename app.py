@@ -7,7 +7,11 @@ import jpholiday
 
 # ページ設定（幅広モード）
 st.set_page_config(page_title="週間天気ダッシュボード", layout="wide")
-
+# --- サイドバーにカレンダーと日時を追加 ---
+st.sidebar.header("カレンダー・時計")
+now = datetime.now()
+st.sidebar.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M')}")
+st.sidebar.date_input("カレンダー", now.date())
 def get_weather_info(code):
     if code == 0: return "☀️ 晴れ"
     elif code in [1, 2, 3]: return "⛅ 曇り"
