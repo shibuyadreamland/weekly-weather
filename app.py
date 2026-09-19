@@ -15,34 +15,34 @@ now = datetime.now(JST)
 st.sidebar.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M')}")
 
 st.sidebar.subheader("今月のカレンダー")
-cal = calendar.HTMLCalendar(calendar.SUNDAY)
-html_cal = cal.formatmonth(now.year, now.month)
 
-st.sidebar.subheader("今月のカレンダー")
-cal = calendar.HTMLCalendar(calendar.SUNDAY)
-html_cal = cal.formatmonth(now.year, now.month)
+# カレンダーのデータを取得して自作のHTMLテーブルを作成
+cal_matrix = calendar.monthcalendar(now.year, now.month)
+html_table = '<table class="month" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px;">'
+html_table += '<tr><th style="color: #ff4b4b; padding: 4px;">Sun</th><th style="padding: 4px;">Mon</th><th style="padding: 4px;">Tue</th><th style="padding: 4px;">Wed</th><th style="padding: 4px;">Thu</th><th style="padding: 4px;">Fri</th><th style="color: #2980b9; padding: 4px;">Sat</th></tr>'
 
-# 今月の祝日リストを取得して、該当する日のHTMLタグを赤色に書き換える
-holidays = jpholiday.month_holidays(now.year, now.month)
-for h_date, h_name in holidays:
-    if h_date.month == now.month:
-        day_str = str(h_date.day)
-        # <td>日</td> を赤文字のスタイル付きタグに置き換え
-        html_cal = html_cal.replace(f'<td>{day_str}</td>', f'<td style="color: #ff4b4b; font-weight: bold;">{day_str}</td>')
+for week in cal_matrix:
+    html_table += '<tr>'
+    for i, day in enumerate(week):
+        if day == 0:
+            html_table += '<td style="padding: 4px;"></td>'
+        else:
+            # どの日付か判定するためのお皿を用意
+            current_date = datetime(now.year, now.month, day).date()
+            style = "padding: 4px;"
+            
+            # 日曜日(i==0) または 祝日の場合 -> 赤色
+            if i == 0 or jpholiday.is_holiday(current_date):
+                style += " color: #ff4b4b; font-weight: bold;"
+            # 土曜日(i==6)の場合 -> 青色
+            elif i == 6:
+                style += " color: #2980b9; font-weight: bold;"
+                
+            html_table += f'<td style="{style}">{day}</td>'
+    html_table += '</tr>'
+html_table += '</table>'
 
-# 土日・祝日を色分けするスタイル
-styled_html = f"""
-<style>
-.month {{ width: 100%; font-size: 14px; border-collapse: collapse; }}
-.month th {{ padding: 4px; text-align: center; }}
-.month td {{ text-align: center; padding: 4px; }}
-/* 日曜日（1列目）を赤色に */
-.month tr td:nth-child(1) {{ color: #ff4b4b; font-weight: bold; }}
-/* 土曜日（7列目）を青色に */
-.month tr td:nth-child(7) {{ color: #2980b9; font-weight: bold; }}
-</style>
-{html_cal}
-"""
+st.sidebar.markdown(html_table, unsafe_allow_html=True)
 st.sidebar.markdown(styled_html, unsafe_allow_html=True)
 def get_weather_info(code):
     if code == 0: return "☀️ 晴れ"
