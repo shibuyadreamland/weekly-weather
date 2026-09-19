@@ -119,7 +119,6 @@ def get_coordinates(city_name):
 
 @st.cache_data(ttl=3600)
 def fetch_weather(lat, lon):
-    # 週間天気(daily)に加え、時間ごと(hourly)の天気コード、気温、降水確率を取得
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&hourly=temperature_2m,weathercode,precipitation_probability&timezone=Asia%2FTokyo"
     try:
         req = urllib.request.Request(url, headers=HEADERS)
@@ -148,7 +147,6 @@ if st.session_state.target_city:
         if data is not None:
             st.subheader(f"「{st.session_state.target_city}」の天気予報")
             
-            # タブを使って「週間予報」と「時間ごとの予報」を切り替えられるようにする
             tab1, tab2 = st.tabs(["📅 週間天気予報", "⏱️ 時間ごとの天気変化（24時間）"])
             
             with tab1:
@@ -176,22 +174,25 @@ if st.session_state.target_city:
                 h_temps = hourly.get("temperature_2m", [])[:24]
                 h_pops = hourly.get("precipitation_probability", [])[:24]
                 
-                # 見やすいようにスクロール可能な横並び、または表形式で表示
-                h_cols = st.columns(min(len(h_times), 8))
+                # スマホでも順番が狂わないよう、見やすいHTMLテーブル形式で縦に美しく並べる
+                hourly_html = '<table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">'
+                hourly_html += '<tr style="border-bottom: 2px solid #ddd;"><th style="padding: 8px;">時刻</th><th style="padding: 8px;">天気</th><th style="padding: 8px;">気温</th><th style="padding: 8px;">降水確率</th></tr>'
+                
                 for i, ht in enumerate(h_times):
-                    # 最初の8時間分をピックアップしてカード形式で表示
-                    col_idx = i % len(h_cols)
-                    if i > 0 and col_idx == 0:
-                        # 9時間目以降の改行表現など
-                        pass
-                    
                     dt_str = datetime.fromisoformat(ht).strftime('%m/%d %H時')
-                    with h_cols[col_idx]:
-                        st.markdown(f"**{dt_str}**")
-                        st.write(get_weather_info(h_codes[i]))
-                        st.markdown(f"気温: {h_temps[i]}°C")
-                        st.markdown(f"降水: {h_pops[i]}%")
-                        st.markdown("---")
+                    weather_text = get_weather_info(h_codes[i])
+                    temp_text = f"{h_temps[i]}°C"
+                    pop_text = f"{h_pops[i]}%"
+                    
+                    hourly_html += f'<tr style="border-bottom: 1px solid #eee;">'
+                    hourly_html += f'<td style="padding: 8px; font-weight: bold;">{dt_str}</td>'
+                    hourly_html += f'<td style="padding: 8px;">{weather_text}</td>'
+                    hourly_html += f'<td style="padding: 8px;">{temp_text}</td>'
+                    hourly_html += f'<td style="padding: 8px;">{pop_text}</td>'
+                    hourly_html += f'</tr>'
+                
+                hourly_html += '</table>'
+                st.markdown(hourly_html, unsafe_allow_html=True)
         else:
             st.error(f"【エラー】 {weather_err}")
 
