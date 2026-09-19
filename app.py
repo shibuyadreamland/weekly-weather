@@ -15,9 +15,23 @@ now = datetime.now(JST)
 st.sidebar.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M')}")
 
 st.sidebar.subheader("今月のカレンダー")
-cal = calendar.TextCalendar(calendar.SUNDAY)
-month_str = cal.formatmonth(now.year, now.month)
-st.sidebar.code(month_str, language="text")
+cal = calendar.HTMLCalendar(calendar.SUNDAY)
+html_cal = cal.formatmonth(now.year, now.month)
+
+# 土日を色分けするスタイル
+styled_html = f"""
+<style>
+.month {{ width: 100%; font-size: 14px; border-collapse: collapse; }}
+.month th {{ padding: 4px; text-align: center; }}
+.month td {{ text-align: center; padding: 4px; }}
+/* 日曜日（1列目）を赤色に */
+.month tr td:nth-child(1) {{ color: #ff4b4b; font-weight: bold; }}
+/* 土曜日（7列目）を青色に */
+.month tr td:nth-child(7) {{ color: #2980b9; font-weight: bold; }}
+</style>
+{html_cal}
+"""
+st.sidebar.markdown(styled_html, unsafe_allow_html=True)
 def get_weather_info(code):
     if code == 0: return "☀️ 晴れ"
     elif code in [1, 2, 3]: return "⛅ 曇り"
