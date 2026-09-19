@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timezone, timedelta
 import calendar
 import jpholiday
-
+from streamlit_autorefresh import st_autorefresh
 # ページ設定（幅広モード）
 st.set_page_config(page_title="週間天気ダッシュボード", layout="wide")
 # --- サイドバーに日時と常時表示カレンダーを追加（日本時間） ---
