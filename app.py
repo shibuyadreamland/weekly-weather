@@ -6,23 +6,25 @@ from datetime import datetime, timezone, timedelta
 import calendar
 from calendar import Calendar
 import jpholiday
+import time
 
 # ページ設定（幅広モード）
 st.set_page_config(page_title="週間天気ダッシュボード", layout="wide")
 
-# --- サイドバーに日時と切り替え可能なカレンダーを追加（日本時間） ---
+# --- サイドバーに日時（秒付き動的時計）と切り替え可能なカレンダーを追加（日本時間） ---
 st.sidebar.header("カレンダー・時計")
 JST = timezone(timedelta(hours=+9), 'JST')
-now = datetime.now(JST)
 
-# 時刻を表示
-st.sidebar.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M')}")
+# 秒数をリアルタイム更新するためのプレースホルダー（空きスペース）
+clock_placeholder = st.sidebar.empty()
 
 # セッションステート（状態管理）を使って表示する年・月を記憶する
 if 'cal_year' not in st.session_state:
-    st.session_state.cal_year = now.year
+    now_init = datetime.now(JST)
+    st.session_state.cal_year = now_init.year
 if 'cal_month' not in st.session_state:
-    st.session_state.cal_month = now.month
+    now_init = datetime.now(JST)
+    st.session_state.cal_month = now_init.month
 
 st.sidebar.subheader("カレンダー")
 
@@ -72,7 +74,7 @@ html_table += '</table>'
 st.sidebar.markdown(html_table, unsafe_allow_html=True)
 
 
-# --- メイン画面の処理（天気予報） ---
+# --- メイン画面の処理（天気予報：API制限を回避する内蔵座標方式） ---
 st.title("週間天気ダッシュボード")
 
 def get_weather_info(code):
@@ -86,7 +88,6 @@ def get_weather_info(code):
 
 HEADERS = {'User-Agent': 'MyWeeklyWeatherWeb/1.0'}
 
-# 主要都市の緯度・経度リスト（API制限を完全に回避するため内蔵）
 CITY_COORDS = {
     "東京": (35.6895, 139.6917),
     "横浜": (35.4437, 139.6380),
@@ -101,15 +102,13 @@ CITY_COORDS = {
 }
 
 def get_coordinates(city_name):
-    # 入力された都市名が辞書にあるかチェック
     clean_name = city_name.strip()
     if clean_name in CITY_COORDS:
-        lat, lon = CITY_COORDS[clean_name]
-        return lat, lon, None
+        return CITY_COORDS[clean_name][0], CITY_COORDS[clean_name][1], None
     else:
-        # リストにない場合はデフォルトで東京を返すか、エラーにする
         return None, None, "登録されていない地名です（東京、横浜、大阪、名古屋、札幌、福岡、京都、神戸、広島、仙台からお選びください）"
 
+@st.cache_data(ttl=3600)
 def fetch_weather(lat, lon):
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo"
     try:
@@ -119,11 +118,9 @@ def fetch_weather(lat, lon):
     except Exception as e:
         return None, f"エラー: {e}"
 
-# 検索状態を保持するセッションの初期化
 if 'target_city' not in st.session_state:
     st.session_state.target_city = "東京"
 
-# 検索フォーム
 col_m1, col_m2 = st.columns([3, 1])
 with col_m1:
     input_city = st.text_input("地名を入力", value=st.session_state.target_city, label_visibility="collapsed")
@@ -132,7 +129,6 @@ with col_m2:
         st.session_state.target_city = input_city
         st.rerun()
 
-# 天気データの取得と表示
 if st.session_state.target_city:
     lat, lon, geo_err = get_coordinates(st.session_state.target_city)
     if lat is None:
@@ -156,3 +152,9 @@ if st.session_state.target_city:
                     st.markdown(f"最低: {tmin[i]}°C")
         else:
             st.error(f"【エラー】 {weather_err}")
+
+# 秒数をリアルタイムで更新し続けるループ処理
+while True:
+    now = datetime.now(JST)
+    clock_placeholder.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M:%S')}")
+    time.sleep(1)
