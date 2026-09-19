@@ -26,23 +26,23 @@ if 'cal_month' not in st.session_state:
 
 st.sidebar.subheader("カレンダー")
 
-# 「先月」「来月」ボタンを横並びに配置
-col1, col2, col3 = st.sidebar.columns([1, 2, 1])
+# ボタンの文字が途切れないように左右に配置
+col1, col2 = st.sidebar.columns(2)
 with col1:
-    if st.button("◀ 先月"):
+    if st.button("◀ 前月", use_container_width=True):
         st.session_state.cal_month -= 1
         if st.session_state.cal_month < 1:
             st.session_state.cal_month = 12
             st.session_state.cal_year -= 1
-with col3:
-    if st.button("来月 ▶"):
+with col2:
+    if st.button("次月 ▶", use_container_width=True):
         st.session_state.cal_month += 1
         if st.session_state.cal_month > 12:
             st.session_state.cal_month = 1
             st.session_state.cal_year += 1
 
 # 現在表示している年月を見出しとして表示
-st.sidebar.markdown(f"<p style='text-align: center; font-weight: bold; font-size: 16px;'>{st.session_state.cal_year}年 {st.session_state.cal_month}月</p>", unsafe_allow_html=True)
+st.sidebar.markdown(f"<p style='text-align: center; font-weight: bold; font-size: 16px; margin: 10px 0;'>{st.session_state.cal_year}年 {st.session_state.cal_month}月</p>", unsafe_allow_html=True)
 
 # 選択された年月に合わせてカレンダーを生成（前後月の日付を含む）
 cal = Calendar(firstweekday=calendar.SUNDAY)
@@ -69,8 +69,6 @@ for week in month_weeks:
         html_table += f'<td style="{style}">{d.day}</td>'
     html_table += '</tr>'
 html_table += '</table>'
-
-st.sidebar.markdown(html_table, unsafe_allow_html=True)
 
 st.sidebar.markdown(html_table, unsafe_allow_html=True)
 
