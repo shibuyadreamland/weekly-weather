@@ -18,11 +18,35 @@ JST = timezone(timedelta(hours=+9), 'JST')
 now = datetime.now(JST)
 st.sidebar.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M:%S')}")
 
-st.sidebar.subheader("今月のカレンダー")
+# セッションステート（状態管理）を使って表示する年・月を記憶する
+if 'cal_year' not in st.session_state:
+    st.session_state.cal_year = now.year
+if 'cal_month' not in st.session_state:
+    st.session_state.cal_month = now.month
 
-# カレンダーの生成部分（前後月の日付を含む）
+st.sidebar.subheader("カレンダー")
+
+# 「先月」「来月」ボタンを横並びに配置
+col1, col2, col3 = st.sidebar.columns([1, 2, 1])
+with col1:
+    if st.button("◀ 先月"):
+        st.session_state.cal_month -= 1
+        if st.session_state.cal_month < 1:
+            st.session_state.cal_month = 12
+            st.session_state.cal_year -= 1
+with col3:
+    if st.button("来月 ▶"):
+        st.session_state.cal_month += 1
+        if st.session_state.cal_month > 12:
+            st.session_state.cal_month = 1
+            st.session_state.cal_year += 1
+
+# 現在表示している年月を見出しとして表示
+st.sidebar.markdown(f"<p style='text-align: center; font-weight: bold; font-size: 16px;'>{st.session_state.cal_year}年 {st.session_state.cal_month}月</p>", unsafe_allow_html=True)
+
+# 選択された年月に合わせてカレンダーを生成（前後月の日付を含む）
 cal = Calendar(firstweekday=calendar.SUNDAY)
-month_weeks = cal.monthdatescalendar(now.year, now.month)
+month_weeks = cal.monthdatescalendar(st.session_state.cal_year, st.session_state.cal_month)
 
 html_table = '<table class="month" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px;">'
 html_table += '<tr><th style="color: #ff4b4b; padding: 4px;">Sun</th><th style="padding: 4px;">Mon</th><th style="padding: 4px;">Tue</th><th style="padding: 4px;">Wed</th><th style="padding: 4px;">Thu</th><th style="padding: 4px;">Fri</th><th style="color: #2980b9; padding: 4px;">Sat</th></tr>'
@@ -31,7 +55,8 @@ for week in month_weeks:
     html_table += '<tr>'
     for i, d in enumerate(week):
         style = "padding: 4px;"
-        is_current_month = (d.month == now.month)
+        # 表示中の月に含まれる日付かどうかを判定
+        is_current_month = (d.month == st.session_state.cal_month)
         
         if is_current_month:
             if i == 0 or jpholiday.is_holiday(d):
@@ -44,6 +69,8 @@ for week in month_weeks:
         html_table += f'<td style="{style}">{d.day}</td>'
     html_table += '</tr>'
 html_table += '</table>'
+
+st.sidebar.markdown(html_table, unsafe_allow_html=True)
 
 st.sidebar.markdown(html_table, unsafe_allow_html=True)
 
