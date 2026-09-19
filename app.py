@@ -18,7 +18,19 @@ st.sidebar.subheader("今月のカレンダー")
 cal = calendar.HTMLCalendar(calendar.SUNDAY)
 html_cal = cal.formatmonth(now.year, now.month)
 
-# 土日を色分けするスタイル
+st.sidebar.subheader("今月のカレンダー")
+cal = calendar.HTMLCalendar(calendar.SUNDAY)
+html_cal = cal.formatmonth(now.year, now.month)
+
+# 今月の祝日リストを取得して、該当する日のHTMLタグを赤色に書き換える
+holidays = jpholiday.month_holidays(now.year, now.month)
+for h_date, h_name in holidays:
+    if h_date.month == now.month:
+        day_str = str(h_date.day)
+        # <td>日</td> を赤文字のスタイル付きタグに置き換え
+        html_cal = html_cal.replace(f'<td>{day_str}</td>', f'<td style="color: #ff4b4b; font-weight: bold;">{day_str}</td>')
+
+# 土日・祝日を色分けするスタイル
 styled_html = f"""
 <style>
 .month {{ width: 100%; font-size: 14px; border-collapse: collapse; }}
