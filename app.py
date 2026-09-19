@@ -29,14 +29,14 @@ if 'cal_month' not in st.session_state:
 st.sidebar.subheader("カレンダー")
 
 # ボタンの文字が途切れないように左右に配置
-col1, col2 = st.sidebar.columns(2)
-with col1:
+col_s1, col_s2 = st.sidebar.columns(2)
+with col_s1:
     if st.button("◀ 前月", use_container_width=True):
         st.session_state.cal_month -= 1
         if st.session_state.cal_month < 1:
             st.session_state.cal_month = 12
             st.session_state.cal_year -= 1
-with col2:
+with col_s2:
     if st.button("次月 ▶", use_container_width=True):
         st.session_state.cal_month += 1
         if st.session_state.cal_month > 12:
@@ -73,11 +73,76 @@ html_table += '</table>'
 
 st.sidebar.markdown(html_table, unsafe_allow_html=True)
 
-# メイン画面の処理（天気予報など）
+
+# --- メイン画面の処理（天気予報） ---
 st.title("週間天気ダッシュボード")
 
-# 検索フォームなどのコードが続く場合はここに記述
-# （※もし元のコードがある場合はそのまま下部に残してください）
+def get_weather_info(code):
+    if code == 0: return "☀️ 晴れ"
+    elif code in [1, 2, 3]: return "🌤️ 曇り"
+    elif code in [45, 48]: return "🌫️ 霧"
+    elif code in [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82]: return "☔ 雨"
+    elif code in [71, 73, 75, 77, 85, 86]: return "🌨️ 雪"
+    elif code in [95, 96, 99]: return "⛈️ 雷雨"
+    else: return "❓ 不明"
+
+HEADERS = {'User-Agent': 'MyWeeklyWeatherWeb/1.0'}
+
+def get_coordinates(city_name):
+    safename = urllib.parse.quote(city_name)
+    url = f"https://nominatim.openstreetmap.org/search?q={safename}&format=json&limit=1"
+    try:
+        req = urllib.request.Request(url, headers=HEADERS)
+        with urllib.request.urlopen(req) as res:
+            data = json.loads(res.read().decode())
+            if len(data) > 0:
+                result = data[0]
+                return float(result["lat"]), float(result["lon"]), None
+        return None, None, "地名が見つかりません"
+    except Exception as e:
+        return None, None, f"エラー: {e}"
+
+def fetch_weather(lat, lon):
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2 প্রযুক্তি"
+    # ※正しく動くようにURLを修正
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo"
+    try:
+        req = urllib.request.Request(url, headers=HEADERS)
+        with urllib.request.urlopen(req) as res:
+            return json.loads(res.read().decode()), None
+    except Exception as e:
+        return None, f"エラー: {e}"
+
+# 検索フォーム
+col_m1, col_m2 = st.columns([3, 1])
+with col_m1:
+    city_name = st.text_input("地名を入力", value="東京", label_visibility="collapsed")
+with col_m2:
+    search_clicked = st.button("検索", use_container_width=True)
+
+if city_name:
+    lat, lon, geo_err = get_coordinates(city_name)
+    if lat is None:
+        st.error(f"【エラー】 {geo_err}")
+    else:
+        data, weather_err = fetch_weather(lat, lon)
+        if data is not None:
+            st.subheader(f"「{city_name}」の週間天気予報")
+            daily = data.get("daily", {})
+            times = daily.get("time", [])
+            codes = daily.get("weathercode", [])
+            tmax = daily.get("temperature_2m_max", [])
+            tmin = daily.get("temperature_2m_min", [])
+            
+            cols = st.columns(len(times))
+            for i, t in enumerate(times):
+                with cols[i]:
+                    st.markdown(f"**{t}**")
+                    st.write(get_weather_info(codes[i]))
+                    st.markdown(f"最高: {tmax[i]}°C")
+                    st.markdown(f"最低: {tmin[i]}°C")
+        else:
+            st.error(f"【エラー】 {weather_err}")
 
 # 最後に、時計の表示を1秒ごとに更新し続ける処理
 while True:
