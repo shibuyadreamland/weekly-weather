@@ -86,23 +86,30 @@ def get_weather_info(code):
 
 HEADERS = {'User-Agent': 'MyWeeklyWeatherWeb/1.0'}
 
-# キャッシュを使ってサーバーへの過剰なリクエストを防止
-@st.cache_data(ttl=3600)
-def get_coordinates(city_name):
-    safename = urllib.parse.quote(city_name)
-    url = f"https://nominatim.openstreetmap.org/search?q={safename}&format=json&limit=1"
-    try:
-        req = urllib.request.Request(url, headers=HEADERS)
-        with urllib.request.urlopen(req) as res:
-            data = json.loads(res.read().decode())
-            if len(data) > 0:
-                result = data[0]
-                return float(result["lat"]), float(result["lon"]), None
-        return None, None, "地名が見つかりません"
-    except Exception as e:
-        return None, None, f"エラー: {e}"
+# 主要都市の緯度・経度リスト（API制限を完全に回避するため内蔵）
+CITY_COORDS = {
+    "東京": (35.6895, 139.6917),
+    "横浜": (35.4437, 139.6380),
+    "大阪": (34.6937, 135.5022),
+    "名古屋": (35.1815, 136.9066),
+    "札幌": (43.0618, 141.3543),
+    "福岡": (33.5902, 130.4017),
+    "京都": (35.0116, 135.7681),
+    "神戸": (34.6901, 135.1956),
+    "広島": (34.3853, 132.4553),
+    "仙台": (38.2682, 140.8694)
+}
 
-@st.cache_data(ttl=3600)
+def get_coordinates(city_name):
+    # 入力された都市名が辞書にあるかチェック
+    clean_name = city_name.strip()
+    if clean_name in CITY_COORDS:
+        lat, lon = CITY_COORDS[clean_name]
+        return lat, lon, None
+    else:
+        # リストにない場合はデフォルトで東京を返すか、エラーにする
+        return None, None, "登録されていない地名です（東京、横浜、大阪、名古屋、札幌、福岡、京都、神戸、広島、仙台からお選びください）"
+
 def fetch_weather(lat, lon):
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo"
     try:
