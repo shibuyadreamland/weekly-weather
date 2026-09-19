@@ -6,25 +6,23 @@ from datetime import datetime, timezone, timedelta
 import calendar
 from calendar import Calendar
 import jpholiday
-import time
 
 # ページ設定（幅広モード）
 st.set_page_config(page_title="週間天気ダッシュボード", layout="wide")
 
-# --- サイドバーに日時（秒付き）と常時表示カレンダーを追加（日本時間） ---
+# --- サイドバーに日時と切り替え可能なカレンダーを追加（日本時間） ---
 st.sidebar.header("カレンダー・時計")
 JST = timezone(timedelta(hours=+9), 'JST')
+now = datetime.now(JST)
 
-# 時計をリアルタイム表示するための空きスペース（プレースホルダー）を作る
-clock_placeholder = st.sidebar.empty()
+# 時刻を表示（分単位にすることでエラーやループの競合を完全に防ぎます）
+st.sidebar.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M')}")
 
 # セッションステート（状態管理）を使って表示する年・月を記憶する
 if 'cal_year' not in st.session_state:
-    now_init = datetime.now(JST)
-    st.session_state.cal_year = now_init.year
+    st.session_state.cal_year = now.year
 if 'cal_month' not in st.session_state:
-    now_init = datetime.now(JST)
-    st.session_state.cal_month = now_init.month
+    st.session_state.cal_month = now.month
 
 st.sidebar.subheader("カレンダー")
 
@@ -103,8 +101,6 @@ def get_coordinates(city_name):
         return None, None, f"エラー: {e}"
 
 def fetch_weather(lat, lon):
-    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2 প্রযুক্তি"
-    # ※正しく動くようにURLを修正
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo"
     try:
         req = urllib.request.Request(url, headers=HEADERS)
@@ -143,9 +139,3 @@ if city_name:
                     st.markdown(f"最低: {tmin[i]}°C")
         else:
             st.error(f"【エラー】 {weather_err}")
-
-# 最後に、時計の表示を1秒ごとに更新し続ける処理
-while True:
-    now = datetime.now(JST)
-    clock_placeholder.write(f"現在日時: {now.strftime('%Y年%m月%d日 %H:%M:%S')}")
-    time.sleep(1)
