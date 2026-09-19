@@ -6,7 +6,7 @@ from datetime import datetime, timezone, timedelta
 import calendar
 from calendar import Calendar
 import jpholiday
-from streamlit_autorefresh import st_autorefresh
+
 # ページ設定（幅広モード）
 st.set_page_config(page_title="週間天気ダッシュボード", layout="wide")
 # 1秒（1000ミリ秒）ごとに自動で画面を更新して時計を動かす
